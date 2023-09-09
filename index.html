@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="css/home.css">
+    <link rel="stylesheet" href="css/keypad.css">
+    <link rel="stylesheet" href="css/contact.css">
+    <link rel="stylesheet" href="css/messages.css">
+    <link rel="stylesheet" href="css/call.css">
+    <link rel="stylesheet" href="css/phone.css">
+    <title>Document</title>
+</head>
+<body>
+
+    <div id="app">
+
+        <div class="phone-frame"></div>
+        <div class="toggle" onclick="mta.triggerEvent('phone:triggerServer' , 'phone:off')"></div>
+        <div class="container">
+
+            <div class="navbar" :class="{'dark-mode' : page != 'home' ? true : false}">
+                <span class="time">{{getCurrentTime}}</span>
+                <img class="status" src="icons/statusbar.png" alt="">
+            </div>
+
+            <div class="page-home" v-if="page == 'home'">
+                <div class="bottom-apps">
+                    <div class="app" @click="changePage('keypad')">
+                        <img src="icons/apps/phone.png" alt="">
+                    </div> 
+                    <div class="app" @click="changePage('messages')">
+                        <img src="icons/apps/messages.png" alt="">
+                    </div>
+                    <div class="app">
+                        <img src="icons/apps/safari.png" alt="">
+                    </div>
+                    <div class="app" @click="changePage('contact')">
+                        <img src="icons/apps/contact.png" alt="">
+                    </div>
+                </div>
+            </div>
+
+            <div class="page-keypad" v-if="page == 'keypad'">
+                <div class="input">
+                    <span>{{keypadNumber}}</span>
+                </div>
+                <div class="keypad">
+                    <div class="key" v-for="key in keypadKeys" :key="key.name" @click="keypadPress(key)">
+                        <div class="background"></div>
+                        <span>{{key.name}}</span><br>
+                        <span class="letters">{{key.letters}}</span>
+                    </div>
+                    <div class="key" id="hide"></div>
+                    <div class="key" id="call" @click="startDialing(keypadNumber)">
+                        <div class="background"></div>
+                        <img src="icons/call.png">
+                    </div>
+                    <div class="key" id="backspace" v-if="keypadNumber.length > 0" @click="keypadPress('backspace')">
+                        <img src="icons/backspace.png">
+                    </div>
+                </div>
+            </div>
+
+            <div class="page-contact-home" v-if="page == 'contact'">
+
+                <div class="navigation">
+                    <span class="title">Kişilerim</span>
+                    <div class="icon" @click="newContactRoute()">
+                        <img src="icons/add.png">
+                    </div>
+                    <div class="search" @keyup="contactFilter()">
+                        <input type="text" placeholder="Ara" v-model="contactSearch">
+                        <img src="icons/search.png" class="search-icon">
+                    </div>
+                </div>
+
+                <div class="contacts" v-html='contactHTML'></div>
+            </div>
+
+            <div class="page-contact-person" v-if="page == 'contact-person'">
+
+                <div class="person">
+                    <div class="top-bar">
+                        <div class="back" @click="changePage('contact')">
+                            <img src="icons/back.png">
+                            <span>Geri dön</span>
+                        </div>
+                    </div>
+
+                    <div class="profile">
+                        <div class="name">
+                            {{looking.name}}
+                        </div>
+                    </div>
+
+                    <div class="menu-list">
+                        <div class="menu" id="message" @click="directiveMessage(looking)">
+                            <img src="icons/directive/message.png">
+                            <br><span>mesaj</span>
+                        </div>
+                        <div class="menu" id="call" @click="directiveCall(looking)">
+                            <img src="icons/directive/call.png">
+                            <br><span>ara</span>
+                        </div>
+                        <!-- <div class="menu" id="facetime">
+                            <img src="icons/directive/facetime.png">
+                            <br><span>facetime</span>
+                        </div> -->
+                        <div class="menu" id="edit" @click="directiveEdit(looking)">
+                            <img src="icons/directive/edit.png">
+                            <br><span>düzenle</span>
+                        </div>
+                        <div class="menu" id="delete" @click="directiveDelete(looking)">
+                            <img src="icons/directive/trash.png">
+                            <br><span>kişiyi sil</span>
+                        </div>
+                    </div>
+
+                    <div class="menu-under">
+                        <span>numara</span><br>
+                        <div id="under"> {{looking.number}} </div>
+                    </div>
+
+                    <div class="menu-under">
+                        <span>email</span><br>
+                        <div id="under"> {{looking.mail}} </div>
+                    </div>
+
+                    <div class="menu-notes">
+                        <span>Notlar</span>
+                        <br>
+                        <textarea placeholder="Bir şeyler yaz"></textarea>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="page-contact-new" v-if="page == 'contact-new'">
+                <div class="new-container">
+                    <div class="top-bar">
+                        <div class="blue" @click="changePage('contact')">İptal Et</div>
+                        <div class="title">{{newContactInfo.page == 'new' ? 'Yeni Kişi Ekle' : 'Kişiyi Düzenle'}}</div>
+                        <div class="blue" @click="newContact()">Tamamla</div>
+                    </div>
+                    <div class="inputs">
+                        <input type="text" v-model="newContactInfo.name" placeholder="Ad">
+                        <input type="text" v-model="newContactInfo.number" placeholder="Telefon Numarası">
+                        <input type="text" v-model="newContactInfo.mail" placeholder="E-mail">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="page-messages-home" v-if="page == 'messages'">
+                <div class="navigation">
+
+                    <span class="date">{{getCurrentDate}}</span><br>
+                    <span class="title">Mesajlar</span>
+
+                    <div class="icon" @click="changePage('message-new')">
+                        <img src="icons/add.png">
+                    </div>
+        
+                </div>
+        
+                <div class="line"></div>
+        
+                <div class="messages">
+        
+                    <div v-for="message in lastMessages" :key="message.id">
+        
+                        <div class="message" :style="{'paddingBottom': message.lastmessage.length < 38 ? '6px' : '18px'}" @click="messageChat(message)">
+                            <div class="texts">
+                                <div class="name">{{message.name}}</div>
+                                <div class="last-message">{{message.lastmessage.length > 85 ? message.lastmessage.substring(0 , 85).trim() + '...' : message.lastmessage}}</div>
+                            </div>
+                        </div>
+        
+                        <div v-if="lastMessages[message.id + 1]" class="line"></div>
+        
+                    </div>
+        
+                </div>
+            </div>
+
+            <div class="page-messages-chat" v-if="page == 'message-chat'">
+                <div class="top-bar">
+
+                    <div class="back" @click="changePage('messages')">
+                        <img src="icons/back.png">
+                    </div>
+
+                    <div class="picture">
+                        <div class="name">{{newMessage.name || newMessage.number}}</div>
+                    </div>
+
+                </div>
+
+                <div class="messages" id="chatMessages">
+                    <div class="bubble" v-for="message in chatMessages" :class="{'right' : message.side, 'left' : !message.side}">
+                        <span>{{message.content}}</span>
+                    </div>
+                </div>
+
+                <div class="input">
+                    <input v-model="newMessage.content" type="text" placeholder="Bir şeyler yaz...">
+                    <img @click="sendMessage()" src="icons/send.png">
+                </div>
+            </div>
+
+            <div class="page-new-message" v-if="page == 'message-new'">
+                <div class="new-container">
+                    <div class="top-bar">
+                        <div class="title">Yeni Mesaj</div>
+                        <div class="back" @click="changePage('messages')">İptal Et</div>
+                    </div>
+                    <div class="to-input">
+                        <span>Kime:</span>
+                        <input v-model="newMessage.number" type="text" placeholder="Bir numara veya isim gir...">
+                        <div class="recommends" v-if="recommendContacts.length > 0 || newMessage.selected.name">
+                            <div class="recommend selected" v-if="newMessage.selected.name" @click="newMessage.selected = {}">
+                                <div style="color: rgba(235 , 235 , 245 , .6)">
+                                    Seçildi
+                                </div>
+                                <div>
+                                    {{newMessage.selected.name}}
+                                    <br>
+                                    <div class="number">{{newMessage.selected.number}}</div>
+                                </div>
+                            </div>
+                            <div class="recommend" v-for="row in recommendContacts" @click="newMessage.selected = row">
+                                {{row.name}}
+                                <br>
+                                <div class="number">{{row.number}}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="message-input">
+                        <input v-model="newMessage.content" type="text" placeholder="Bir şeyler yaz...">
+                        <img @click="sendMessage()" src="icons/send.png">
+                    </div>
+                </div>
+            </div>
+
+            <div class="page-call" v-if="page == 'incoming'">
+
+                <div class="texts">
+                    <div class="name"> {{callName}} </div>
+                    <div class="status">Arıyor...</div>
+                </div>
+        
+                <div class="buttons">
+        
+                    <div class="decline" @click="dialAnswer(false)">
+                        <img src="icons/decline.png"><br>
+                        <span>Reddet</span>
+                    </div>
+        
+                    <div class="accept" @click="dialAnswer(true)">
+                        <img src="icons/accept.png"><br>
+                        <span>Kabul et</span>
+                    </div>
+        
+                </div>
+        
+            </div>
+
+            <div class="page-call" v-if="page == 'outgoing'">
+
+                <div class="texts">
+                    <div class="name"> {{callName}} </div>
+                    <div class="status">Aranıyor...</div>
+                </div>
+        
+                <div class="buttons">
+                    <div class="decline" @click="stopDialing()">
+                        <img src="icons/decline.png">
+                    </div>
+                </div>
+        
+            </div>
+
+            <div class="page-call" v-if="page == 'calling'">
+
+                <div class="texts">
+                    <div class="name"> {{callName}} </div>
+                    <div class="status">{{callingTime}}</div>
+                </div>
+        
+                <div class="buttons">
+                    <div class="decline" @click="stopCall()">
+                        <img src="icons/decline.png">
+                    </div>
+                </div>
+        
+            </div>
+
+            <div class="notifications">
+                <div class="notification" v-for="row in notifications">
+                    <div class="icon">
+                        <img :src="row.icon">
+                    </div>
+                    <div class="texts">
+                        <div class="title">
+                            <div class="from">{{row.title}}</div>
+                            <div class="timestamp">şimdi</div>
+                        </div>
+                        <div class="content">{{row.content}}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="footbar" v-if="page != 'home'">
+                <div class="button" @click="changePage('home')">
+                    <button></button>
+                </div>
+            </div>
+
+        </div>
+        
+    </div>
+
+</body>
+    <script src="./javascript/vue.js"></script>
+    <script src="./javascript/mtaevents.js"></script>
+    <script src="./javascript/index.js"></script>
+</html>
